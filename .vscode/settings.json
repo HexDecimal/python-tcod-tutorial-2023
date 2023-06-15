@@ -15,6 +15,7 @@
         "editor.defaultFormatter": "ms-python.black-formatter"
     },
     "cSpell.words": [
+        "isort",
         "tcod"
     ]
 }
