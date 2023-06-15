@@ -1,0 +1,20 @@
+{
+    "files.trimTrailingWhitespace": true,
+    "files.trimFinalNewlines": true,
+    "files.insertFinalNewline": true,
+    "editor.formatOnSave": true,
+    "python.linting.enabled": true,
+    "python.linting.mypyEnabled": true,
+    "editor.codeActionsOnSave": {
+        "source.fixAll": true, // Apply Ruff fixes
+    },
+    "editor.rulers": [
+        120
+    ],
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter"
+    },
+    "cSpell.words": [
+        "tcod"
+    ]
+}
