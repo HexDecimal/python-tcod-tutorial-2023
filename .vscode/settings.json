@@ -16,6 +16,8 @@
     },
     "cSpell.words": [
         "isort",
-        "tcod"
+        "tcod",
+        "tileset",
+        "tilesheet"
     ]
 }
