@@ -41,7 +41,9 @@ class ExampleState:
 
 def main() -> None:
     """Entry point function."""
-    tileset = tcod.tileset.load_tilesheet("data/Alloy_curses_12x12.png", 16, 16, tcod.tileset.CHARMAP_CP437)
+    tileset = tcod.tileset.load_tilesheet(
+        "data/Alloy_curses_12x12.png", columns=16, rows=16, charmap=tcod.tileset.CHARMAP_CP437
+    )
     tcod.tileset.procedural_block_elements(tileset=tileset)
     console = tcod.console.Console(80, 50)
     state = ExampleState(player_x=console.width // 2, player_y=console.height // 2)
