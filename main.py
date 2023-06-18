@@ -57,5 +57,5 @@ def main() -> None:
                 state.on_event(event_tiles)  # Dispatch events to the state
 
 
-if __name__ == "__main__":  # Is True only when this script is executed directly.
+if __name__ == "__main__":
     main()
