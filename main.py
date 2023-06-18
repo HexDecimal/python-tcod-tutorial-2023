@@ -8,8 +8,6 @@ import tcod.context
 import tcod.event
 import tcod.tileset
 
-import g
-
 
 @attrs.define(eq=False)
 class ExampleState:
@@ -47,14 +45,13 @@ def main() -> None:
     tcod.tileset.procedural_block_elements(tileset=tileset)
     console = tcod.console.Console(80, 50)
     state = ExampleState(player_x=console.width // 2, player_y=console.height // 2)
-    with tcod.context.new(console=console, tileset=tileset) as g.context:
+    with tcod.context.new(console=console, tileset=tileset) as context:
         while True:  # Main loop
             console.clear()  # Clear the console before any drawing
             state.on_draw(console)  # Draw the current state
-            g.context.present(console)  # Render the console to the window and show it
-            for event_pixels in tcod.event.wait():  # Event loop, blocks until pending events exist
-                event_tiles = g.context.convert_event(event_pixels)  # Change mouse coordinates to tiles
-                state.on_event(event_tiles)  # Dispatch events to the state
+            context.present(console)  # Render the console to the window and show it
+            for event in tcod.event.wait():  # Event loop, blocks until pending events exist
+                state.on_event(event)  # Dispatch events to the state
 
 
 if __name__ == "__main__":
