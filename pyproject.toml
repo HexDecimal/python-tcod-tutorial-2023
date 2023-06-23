@@ -48,7 +48,6 @@ select = [
     "FA",  # flake8-future-annotations
     "RET", # flake8-return
     "ICN", # flake8-import-conventions
-    "INP", # flake8-no-pep420
     "PIE", # flake8-pie
     "PT",  # flake8-pytest-style
     "SIM", # flake8-simplify
@@ -59,17 +58,15 @@ select = [
     "G",   # flake8-logging-format
 ]
 ignore = [
-    "E501",   # line-too-long
-    "S101",   # assert
-    "ANN101", # missing-type-self
-    "ANN102", # missing-type-cls
-    "D203",   # one-blank-line-before-class
-    "D204",   # one-blank-line-after-class
-    "D213",   # multi-line-summary-second-line
-    "D407",   # dashed-underline-after-section
-    "D408",   # section-underline-after-name
-    "D409",   # section-underline-matches-section-length
-    "S311",   # suspicious-non-cryptographic-random-usage
+    "E501",    # line-too-long
+    "S101",    # assert
+    "ANN101",  # missing-type-self
+    "ANN102",  # missing-type-cls
+    "S311",    # suspicious-non-cryptographic-random-usage
+    "PLR0913", # too-many-arguments
 ]
 line-length = 120
 target-version = "py311"
+
+[tool.ruff.pydocstyle] # https://beta.ruff.rs/docs/settings/#pydocstyle
+convention = "google"
