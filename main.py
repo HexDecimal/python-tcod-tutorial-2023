@@ -51,6 +51,7 @@ def main() -> None:
             state.on_draw(console)  # Draw the current state
             context.present(console)  # Render the console to the window and show it
             for event in tcod.event.wait():  # Event loop, blocks until pending events exist
+                print(event)
                 state.on_event(event)  # Dispatch events to the state
 
 
