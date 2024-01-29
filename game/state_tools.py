@@ -1,4 +1,5 @@
 """State handling functions."""
+
 import tcod.console
 
 import g
