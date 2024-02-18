@@ -1,4 +1,6 @@
 """State handling functions."""
+from __future__ import annotations
+
 import tcod.console
 
 import g
@@ -18,6 +20,5 @@ def main_loop() -> None:
     while g.states:
         main_draw()
         for event in tcod.event.wait():
-            print(event)
             if g.states:
                 g.states[-1].on_event(event)

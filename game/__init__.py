@@ -1,0 +1,1 @@
+"""Game namespace package."""

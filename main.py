@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import tcod.console
 import tcod.context
-import tcod.event
 import tcod.tileset
 
 import g
 import game.state_tools
 import game.states
+import game.world_tools
 
 
 def main() -> None:
@@ -19,7 +19,8 @@ def main() -> None:
     )
     tcod.tileset.procedural_block_elements(tileset=tileset)
     g.console = tcod.console.Console(80, 50)
-    g.states = [game.states.ExampleState(player_x=g.console.width // 2, player_y=g.console.height // 2)]
+    g.states = [game.states.InGame()]
+    g.world = game.world_tools.new_world()
     with tcod.context.new(console=g.console, tileset=tileset) as g.context:
         game.state_tools.main_loop()
 

@@ -10,6 +10,8 @@ import tcod.event
 class State(Protocol):
     """An abstract game state."""
 
+    __slots__ = ()
+
     def on_event(self, event: tcod.event.Event) -> None:
         """Called on events."""
 
