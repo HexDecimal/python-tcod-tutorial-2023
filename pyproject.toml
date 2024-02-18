@@ -1,14 +1,4 @@
 # Project configuiration options for Python tools.
-[tool.black] # https://black.readthedocs.io/en/stable/usage_and_configuration/the_basics.html#configuration-via-a-file
-target-version = ["py311"]
-line-length = 120
-
-[tool.isort] # https://pycqa.github.io/isort/docs/configuration/options.html
-py_version = "311"
-line_length = 120
-profile = "black"
-skip_gitignore = true
-
 [tool.mypy] # https://mypy.readthedocs.io/en/stable/config_file.html
 python_version = "3.11"
 files = ["."]
@@ -27,8 +17,11 @@ warn_return_any = true
 no_implicit_reexport = true
 strict_equality = true
 
-[tool.ruff]
-# https://beta.ruff.rs/docs/rules/
+[tool.ruff] # https://docs.astral.sh/ruff/rules/
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
 select = [
     "C90", # mccabe
     "D",   # pydocstyle
@@ -65,8 +58,6 @@ ignore = [
     "S311",    # suspicious-non-cryptographic-random-usage
     "PLR0913", # too-many-arguments
 ]
-line-length = 120
-target-version = "py311"
 
-[tool.ruff.pydocstyle] # https://beta.ruff.rs/docs/settings/#pydocstyle
+[tool.ruff.pydocstyle] # https://docs.astral.sh/ruff/settings/#lintpydocstyle
 convention = "google"
