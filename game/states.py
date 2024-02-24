@@ -44,7 +44,7 @@ DIRECTION_KEYS: Final = {
 }
 
 
-@attrs.define()
+@attrs.define(eq=False)
 class InGame:
     """Primary in-game state."""
 
@@ -59,7 +59,8 @@ class InGame:
                 # Auto pickup gold
                 for gold in g.world.Q.all_of(components=[Gold], tags=[player.components[Position], IsItem]):
                     player.components[Gold] += gold.components[Gold]
-                    print(f"Picked up {gold.components[Gold]}g, total: {player.components[Gold]}g")
+                    text = f"Picked up {gold.components[Gold]}g, total: {player.components[Gold]}g"
+                    g.world[None].components[("Text", str)] = text
                     gold.clear()
 
     def on_draw(self, console: tcod.console.Console) -> None:
@@ -70,3 +71,6 @@ class InGame:
                 continue
             graphic = entity.components[Graphic]
             console.rgb[["ch", "fg"]][pos.y, pos.x] = graphic.ch, graphic.fg
+
+        if text := g.world[None].components.get(("Text", str)):
+            console.print(x=0, y=console.height - 1, string=text, fg=(255, 255, 255), bg=(0, 0, 0))
