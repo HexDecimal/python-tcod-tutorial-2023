@@ -9,7 +9,7 @@ import tcod.tileset
 import g
 import game.state_tools
 import game.states
-import game.world_tools
+from game.constants import CONSOLE_SIZE
 
 
 def main() -> None:
@@ -18,10 +18,8 @@ def main() -> None:
         "data/Alloy_curses_12x12.png", columns=16, rows=16, charmap=tcod.tileset.CHARMAP_CP437
     )
     tcod.tileset.procedural_block_elements(tileset=tileset)
-    g.console = tcod.console.Console(80, 50)
-    g.states = [game.states.InGame()]
-    g.world = game.world_tools.new_world()
-    with tcod.context.new(console=g.console, tileset=tileset) as g.context:
+    g.states = [game.states.MainMenu()]
+    with tcod.context.new(columns=CONSOLE_SIZE[0], rows=CONSOLE_SIZE[1], tileset=tileset) as g.context:
         game.state_tools.main_loop()
 
 
