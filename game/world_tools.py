@@ -1,4 +1,5 @@
 """Functions for working with worlds."""
+
 from __future__ import annotations
 
 from random import Random

@@ -1,4 +1,5 @@
 """State handling functions."""
+
 from __future__ import annotations
 
 import tcod.console
