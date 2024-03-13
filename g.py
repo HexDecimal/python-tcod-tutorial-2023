@@ -1,4 +1,5 @@
 """This module stores globally mutable variables used by this program."""
+
 from __future__ import annotations
 
 import tcod.context
