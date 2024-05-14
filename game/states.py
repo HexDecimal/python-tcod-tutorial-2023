@@ -109,19 +109,21 @@ class ListMenu(State):
                     return None
                 if self.selected is not None:
                     self.selected += dy
+                    self.selected %= len(self.items)
                 else:
-                    self.selected = 0 if dy == 1 else -1
-                self.selected %= len(self.items)
+                    self.selected = 0 if dy == 1 else len(self.items) - 1
                 return None
             case tcod.event.MouseMotion(position=(_, y)):
                 y -= self.y
-                self.selected = y if 0 <= y < len(self.items) else -1
+                self.selected = y if 0 <= y < len(self.items) else None
                 return None
             case tcod.event.KeyDown(sym=KeySym.RETURN):
                 return self.activate_selected()
             case tcod.event.MouseButtonUp(button=tcod.event.MouseButton.LEFT):
                 return self.activate_selected()
             case tcod.event.KeyDown(sym=KeySym.ESCAPE):
+                return self.on_cancel()
+            case tcod.event.MouseButtonUp(button=tcod.event.MouseButton.RIGHT):
                 return self.on_cancel()
             case _:
                 return None
@@ -133,7 +135,7 @@ class ListMenu(State):
         return None
 
     def on_cancel(self) -> StateResult:
-        """Handle escaped being pressed on menus."""
+        """Handle escape or right click being pressed on menus."""
         return Pop()
 
     def on_draw(self, console: tcod.console.Console) -> None:
@@ -171,6 +173,7 @@ class MainMenu(ListMenu):
 
         super().__init__(
             items=tuple(items),
+            selected=0,
             x=5,
             y=5,
         )
