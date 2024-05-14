@@ -13,6 +13,7 @@ from tcod.event import KeySym
 import g
 import game.world_tools
 from game.components import Gold, Graphic, Position
+from game.message_tools import get_log, report
 from game.state import Pop, Push, Rebase, State, StateResult
 from game.tags import IsItem, IsPlayer
 
@@ -63,7 +64,7 @@ class InGame(State):
                 # Auto pickup gold
                 for gold in g.world.Q.all_of(components=[Gold], tags=[player.components[Position], IsItem]):
                     player.components[Gold] += gold.components[Gold]
-                    print(f"Picked up {gold.components[Gold]}g, total: {player.components[Gold]}g")
+                    report(g.world, f"Picked up {gold.components[Gold]}g, total: {player.components[Gold]}g")
                     gold.clear()
                 return None
             case tcod.event.KeyDown(sym=KeySym.ESCAPE):
@@ -79,6 +80,8 @@ class InGame(State):
                 continue
             graphic = entity.components[Graphic]
             console.rgb[["ch", "fg"]][pos.y, pos.x] = graphic.ch, graphic.fg
+        for i, msg in enumerate(get_log(g.world)[:-6:-1]):
+            console.print(0, console.height - 1 - i, msg.text, fg=(255, 255, 255))
 
 
 @attrs.define()
