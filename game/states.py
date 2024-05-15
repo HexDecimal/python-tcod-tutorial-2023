@@ -80,8 +80,9 @@ class InGame(State):
                 continue
             graphic = entity.components[Graphic]
             console.rgb[["ch", "fg"]][pos.y, pos.x] = graphic.ch, graphic.fg
-        for i, msg in enumerate(get_log(g.world)[:-6:-1]):
-            console.print(0, console.height - 1 - i, msg.text, fg=(255, 255, 255))
+
+        for i, msg in zip(range(5), reversed(get_log(g.world)), strict=False):
+            console.print(x=0, y=console.height - 1 - i, string=msg.text, fg=(255, 255, 255))
 
 
 @attrs.define()
