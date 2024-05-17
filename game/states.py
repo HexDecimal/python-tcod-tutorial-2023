@@ -3,16 +3,18 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Final
+from typing import Final, Self
 
 import attrs
 import tcod.console
+import tcod.constants
 import tcod.event
 from tcod.event import KeySym
 
 import g
 import game.world_tools
 from game.components import Gold, Graphic, Position
+from game.constants import CONSOLE_SIZE
 from game.message_tools import get_log, report
 from game.state import Pop, Push, Rebase, State, StateResult
 from game.tags import IsItem, IsPlayer
@@ -69,6 +71,8 @@ class InGame(State):
                 return None
             case tcod.event.KeyDown(sym=KeySym.ESCAPE):
                 return Push(MainMenu())
+            case tcod.event.KeyDown(sym=KeySym.m):
+                return Push(LogViewer.from_console_size(*CONSOLE_SIZE))
             case _:
                 return None
 
@@ -194,3 +198,129 @@ class MainMenu(ListMenu):
     def quit(self) -> StateResult:
         """Close the program."""
         raise SystemExit()
+
+
+@attrs.define(eq=False)
+class LogViewer(State):
+    """Displays the full log of messages."""
+
+    x: int
+    y: int
+    width: int
+    height: int
+    y_position: int = attrs.field(factory=lambda: len(get_log(g.world)) - 1)
+
+    @classmethod
+    def from_console_size(cls, width: int, height: int) -> Self:
+        """Return a new instance derived from the provided console size."""
+        MARGIN_SIZE = 2
+        return cls(x=MARGIN_SIZE, y=MARGIN_SIZE, width=width - MARGIN_SIZE * 2, height=height - MARGIN_SIZE * 2)
+
+    def scroll_overflow(self, y_dir: int) -> bool:
+        """Handle scrolling overflow. Return True if the log was wrapped."""
+        if y_dir == 0:
+            return False
+        log_length: Final = len(get_log(g.world))
+        if y_dir < 0 and self.y_position <= 0:
+            self.y_position = log_length - 1
+            return True
+        if y_dir > 0 and self.y_position >= log_length - 1:
+            self.y_position = 0
+            return True
+        return False
+
+    def scroll(self, y_dir: int) -> None:
+        """Scroll the log by the amount provided by y_dir."""
+        if self.scroll_overflow(y_dir):
+            return
+        self.y_position = min(max(0, self.y_position + y_dir), len(get_log(g.world)) - 1)
+
+    def scroll_page(self, y_dir: int) -> None:
+        """Scroll for an entire page."""
+        assert y_dir in {-1, 1}
+        log = get_log(g.world)
+        if self.scroll_overflow(y_dir):
+            return
+        distance = self.height - 2
+        first = True
+        while True:
+            if y_dir < 0 and self.y_position == 0:
+                return
+            if y_dir > 0 and self.y_position == len(log) - 1:
+                return
+            distance -= tcod.console.get_height_rect(width=self.width - 2, string=log[self.y_position].text)
+            if distance <= 0 and not first:
+                return
+            first = False
+            self.y_position += y_dir
+
+    def on_event(self, event: tcod.event.Event) -> StateResult:  # noqa: PLR0911
+        """Handle events for menus."""
+        match event:
+            case tcod.event.Quit():
+                raise SystemExit()
+            case tcod.event.MouseWheel(y=y):
+                self.scroll(-y * 3)
+                return None
+            case tcod.event.MouseMotion(motion=(_, y), state=tcod.event.MouseButtonMask.LEFT):
+                self.scroll(-y)
+                return None
+            case tcod.event.KeyDown(sym=KeySym.HOME):
+                self.y_position = 0
+                return None
+            case tcod.event.KeyDown(sym=KeySym.END):
+                self.y_position = len(get_log(g.world)) - 1
+                return None
+            case tcod.event.KeyDown(sym=KeySym.PAGEUP):
+                self.scroll_page(-1)
+                return None
+            case tcod.event.KeyDown(sym=KeySym.PAGEDOWN):
+                self.scroll_page(1)
+                return None
+            case tcod.event.KeyDown(sym=sym) if sym in DIRECTION_KEYS:
+                dx, dy = DIRECTION_KEYS[sym]
+                if dx != 0 or dy == 0:
+                    return Pop()
+                self.scroll(dy)
+                return None
+            case tcod.event.KeyDown():
+                return Pop()
+            case tcod.event.MouseButtonUp(button=tcod.event.MouseButton.RIGHT):
+                return Pop()
+            case _:
+                return None
+
+    def on_draw(self, console: tcod.console.Console) -> None:
+        """Render the menu."""
+        current_index = g.states.index(self)
+        if current_index > 0:
+            g.states[current_index - 1].on_draw(console)
+        if g.states[-1] is self:
+            console.rgb["fg"] //= 4
+            console.rgb["bg"] //= 4
+
+        console.draw_frame(
+            self.x, self.y, self.width, self.height, fg=(255, 255, 255), bg=(0, 0, 0), decoration="┌─┐│ │└─┘"
+        )
+        console.print_box(
+            self.x,
+            self.y,
+            self.width,
+            self.height,
+            " Message Log ",
+            fg=(0, 0, 0),
+            bg=(255, 255, 255),
+            alignment=tcod.constants.CENTER,
+        )
+
+        log_console = tcod.console.Console(self.width - 2, self.height - 2)
+        y = log_console.height
+
+        for msg in get_log(g.world)[self.y_position :: -1]:
+            if y <= 0:
+                break
+            y -= tcod.console.get_height_rect(width=log_console.width, string=msg.text)
+            log_console.print_box(
+                x=0, y=y, width=log_console.width, height=log_console.height, string=msg.text, fg=(255, 255, 255)
+            )
+        log_console.blit(dest=console, dest_x=self.x + 1, dest_y=self.y + 1)
