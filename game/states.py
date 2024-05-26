@@ -15,7 +15,8 @@ import g
 import game.world_tools
 from game.components import Gold, Graphic, Position
 from game.constants import CONSOLE_SIZE
-from game.message_tools import get_log, report
+from game.message_tools import report
+from game.rendering import LogRenderer
 from game.state import Pop, Push, Rebase, State, StateResult
 from game.tags import IsItem, IsPlayer
 
@@ -85,8 +86,7 @@ class InGame(State):
             graphic = entity.components[Graphic]
             console.rgb[["ch", "fg"]][pos.y, pos.x] = graphic.ch, graphic.fg
 
-        for i, msg in zip(range(5), reversed(get_log(g.world)), strict=False):
-            console.print(x=0, y=console.height - 1 - i, string=msg.text, fg=(255, 255, 255))
+        LogRenderer.init(g.world, console.width, 5).render().blit(dest=console, dest_x=0, dest_y=console.height - 5)
 
 
 @attrs.define()
@@ -208,51 +208,19 @@ class LogViewer(State):
     y: int
     width: int
     height: int
-    y_position: int = attrs.field(factory=lambda: len(get_log(g.world)) - 1)
+    log_renderer: LogRenderer
 
     @classmethod
     def from_console_size(cls, width: int, height: int) -> Self:
         """Return a new instance derived from the provided console size."""
         MARGIN_SIZE = 2
-        return cls(x=MARGIN_SIZE, y=MARGIN_SIZE, width=width - MARGIN_SIZE * 2, height=height - MARGIN_SIZE * 2)
-
-    def scroll_overflow(self, y_dir: int) -> bool:
-        """Handle scrolling overflow. Return True if the log was wrapped."""
-        if y_dir == 0:
-            return False
-        log_length: Final = len(get_log(g.world))
-        if y_dir < 0 and self.y_position <= 0:
-            self.y_position = log_length - 1
-            return True
-        if y_dir > 0 and self.y_position >= log_length - 1:
-            self.y_position = 0
-            return True
-        return False
-
-    def scroll(self, y_dir: int) -> None:
-        """Scroll the log by the amount provided by y_dir."""
-        if self.scroll_overflow(y_dir):
-            return
-        self.y_position = min(max(0, self.y_position + y_dir), len(get_log(g.world)) - 1)
-
-    def scroll_page(self, y_dir: int) -> None:
-        """Scroll for an entire page."""
-        assert y_dir in {-1, 1}
-        log = get_log(g.world)
-        if self.scroll_overflow(y_dir):
-            return
-        distance = self.height - 2
-        first = True
-        while True:
-            if y_dir < 0 and self.y_position == 0:
-                return
-            if y_dir > 0 and self.y_position == len(log) - 1:
-                return
-            distance -= tcod.console.get_height_rect(width=self.width - 2, string=log[self.y_position].text)
-            if distance <= 0 and not first:
-                return
-            first = False
-            self.y_position += y_dir
+        return cls(
+            x=MARGIN_SIZE,
+            y=MARGIN_SIZE,
+            width=width - MARGIN_SIZE * 2,
+            height=height - MARGIN_SIZE * 2,
+            log_renderer=LogRenderer.init(g.world, width - MARGIN_SIZE * 2 - 2, height - MARGIN_SIZE * 2 - 2),
+        )
 
     def on_event(self, event: tcod.event.Event) -> StateResult:  # noqa: PLR0911
         """Handle events for menus."""
@@ -260,28 +228,28 @@ class LogViewer(State):
             case tcod.event.Quit():
                 raise SystemExit()
             case tcod.event.MouseWheel(y=y):
-                self.scroll(-y * 3)
+                self.log_renderer.scroll(-y * 3)
                 return None
             case tcod.event.MouseMotion(motion=(_, y), state=tcod.event.MouseButtonMask.LEFT):
-                self.scroll(-y)
+                self.log_renderer.scroll(-y)
                 return None
             case tcod.event.KeyDown(sym=KeySym.HOME):
-                self.y_position = 0
+                self.log_renderer.y_position = 0
                 return None
             case tcod.event.KeyDown(sym=KeySym.END):
-                self.y_position = len(get_log(g.world)) - 1
+                self.log_renderer.y_position = self.log_renderer.max_y_pos
                 return None
             case tcod.event.KeyDown(sym=KeySym.PAGEUP):
-                self.scroll_page(-1)
+                self.log_renderer.scroll(-self.log_renderer.height)
                 return None
             case tcod.event.KeyDown(sym=KeySym.PAGEDOWN):
-                self.scroll_page(1)
+                self.log_renderer.scroll(self.log_renderer.height)
                 return None
             case tcod.event.KeyDown(sym=sym) if sym in DIRECTION_KEYS:
                 dx, dy = DIRECTION_KEYS[sym]
                 if dx != 0 or dy == 0:
                     return Pop()
-                self.scroll(dy)
+                self.log_renderer.scroll(dy)
                 return None
             case tcod.event.KeyDown():
                 return Pop()
@@ -312,15 +280,4 @@ class LogViewer(State):
             bg=(255, 255, 255),
             alignment=tcod.constants.CENTER,
         )
-
-        log_console = tcod.console.Console(self.width - 2, self.height - 2)
-        y = log_console.height
-
-        for msg in get_log(g.world)[self.y_position :: -1]:
-            if y <= 0:
-                break
-            y -= tcod.console.get_height_rect(width=log_console.width, string=msg.text)
-            log_console.print_box(
-                x=0, y=y, width=log_console.width, height=log_console.height, string=msg.text, fg=(255, 255, 255)
-            )
-        log_console.blit(dest=console, dest_x=self.x + 1, dest_y=self.y + 1)
+        self.log_renderer.render().blit(dest=console, dest_x=self.x + 1, dest_y=self.y + 1)
