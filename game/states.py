@@ -237,7 +237,7 @@ class LogViewer(State):
                 self.log_renderer.y_position = 0
                 return None
             case tcod.event.KeyDown(sym=KeySym.END):
-                self.log_renderer.y_position = self.log_renderer.max_y_pos
+                self.log_renderer.y_position = self.log_renderer.get_max_y_pos()
                 return None
             case tcod.event.KeyDown(sym=KeySym.PAGEUP):
                 self.log_renderer.scroll(-self.log_renderer.height)
