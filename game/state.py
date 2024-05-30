@@ -34,10 +34,10 @@ class Pop:
 
 
 @attrs.define()
-class Rebase:
-    """Replace the stack with a new state."""
+class Reset:
+    """Replace the entire stack with a new state."""
 
     state: State
 
 
-StateResult: TypeAlias = "Push | Pop | Rebase | None"
+StateResult: TypeAlias = "Push | Pop | Reset | None"

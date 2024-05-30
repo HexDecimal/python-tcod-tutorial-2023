@@ -17,7 +17,7 @@ from game.components import Gold, Graphic, Position
 from game.constants import CONSOLE_SIZE
 from game.message_tools import report
 from game.rendering import LogRenderer
-from game.state import Pop, Push, Rebase, State, StateResult
+from game.state import Pop, Push, Reset, State, StateResult
 from game.tags import IsItem, IsPlayer
 
 DIRECTION_KEYS: Final = {
@@ -188,12 +188,12 @@ class MainMenu(ListMenu):
 
     def continue_(self) -> StateResult:
         """Return to the game."""
-        return Rebase(InGame())
+        return Reset(InGame())
 
     def new_game(self) -> StateResult:
         """Begin a new game."""
         g.world = game.world_tools.new_world()
-        return Rebase(InGame())
+        return Reset(InGame())
 
     def quit(self) -> StateResult:
         """Close the program."""

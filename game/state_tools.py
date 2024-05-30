@@ -6,7 +6,7 @@ import tcod.console
 
 import g
 from game.constants import CONSOLE_SIZE
-from game.state import Pop, Push, Rebase, StateResult
+from game.state import Pop, Push, Reset, StateResult
 
 
 def main_draw() -> None:
@@ -25,7 +25,7 @@ def apply_state_result(result: StateResult) -> None:
             g.states.append(state)
         case Pop():
             g.states.pop()
-        case Rebase(state=state):
+        case Reset(state=state):
             while g.states:
                 apply_state_result(Pop())
             apply_state_result(Push(state))
