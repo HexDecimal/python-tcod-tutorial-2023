@@ -14,7 +14,6 @@ from tcod.event import KeySym
 import g
 import game.world_tools
 from game.components import Gold, Graphic, Position
-from game.constants import CONSOLE_SIZE
 from game.message_tools import report
 from game.rendering import LogRenderer
 from game.state import Pop, Push, Reset, State, StateResult
@@ -73,7 +72,7 @@ class InGame(State):
             case tcod.event.KeyDown(sym=KeySym.ESCAPE):
                 return Push(MainMenu())
             case tcod.event.KeyDown(sym=KeySym.m):
-                return Push(LogViewer.from_console_size(*CONSOLE_SIZE))
+                return Push(LogViewer.from_console_size(*g.config.console.size))
             case _:
                 return None
 
