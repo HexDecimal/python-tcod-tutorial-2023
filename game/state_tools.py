@@ -5,7 +5,6 @@ from __future__ import annotations
 import tcod.console
 
 import g
-from game.constants import CONSOLE_SIZE
 from game.state import Pop, Push, Reset, StateResult
 
 
@@ -13,7 +12,7 @@ def main_draw() -> None:
     """Render and present the active state."""
     if not g.states:
         return
-    console = tcod.console.Console(*CONSOLE_SIZE)
+    console = tcod.console.Console(*g.config.console.size)
     g.states[-1].on_draw(console)
     g.context.present(console)
 
