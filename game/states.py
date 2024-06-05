@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Final, Self
+from typing import Final, Protocol, Self
 
 import attrs
 import tcod.console
@@ -15,7 +15,7 @@ import g
 import game.world_tools
 from game.components import Gold, Graphic, Position
 from game.message_tools import report
-from game.rendering import LogRenderer
+from game.rendering import LogRenderer, draw_previous_state
 from game.state import Pop, Push, Reset, State, StateResult
 from game.tags import IsItem, IsPlayer
 
@@ -88,12 +88,80 @@ class InGame(State):
         LogRenderer.init(g.world, console.width, 5).render().blit(dest=console, dest_x=0, dest_y=console.height - 5)
 
 
+class MenuItem(Protocol):
+    """Menu item protocol."""
+
+    __slots__ = ()
+
+    @property
+    def label(self) -> str:
+        """Label for the menu item."""
+
+    def on_event(self, event: tcod.event.Event) -> StateResult:
+        """Handle events passed to the menu item."""
+
+
 @attrs.define()
-class MenuItem:
+class SelectItem(MenuItem):
     """Clickable menu item."""
 
     label: str
     callback: Callable[[], StateResult]
+
+    def on_event(self, event: tcod.event.Event) -> StateResult:
+        """Handle events selecting this item."""
+        match event:
+            case tcod.event.KeyDown(sym=sym) if sym in {KeySym.RETURN, KeySym.RETURN2, KeySym.KP_ENTER}:
+                return self.callback()
+            case tcod.event.MouseButtonUp(button=tcod.event.MouseButton.LEFT):
+                return self.callback()
+            case _:
+                return None
+
+
+@attrs.define()
+class IntItem(MenuItem):
+    """Numbered item."""
+
+    format: str = "{}"
+    value: int = 0
+    min_value: int | None = 0
+    max_value: int | None = None
+    on_changed_callback: Callable[[int], None] | None = None
+
+    @property
+    def label(self) -> str:
+        """Return a label including the current value."""
+        return self.format.format(self.value)
+
+    def set_value(self, value: int | str) -> None:
+        """Set and clamp the value."""
+        if isinstance(value, str):
+            try:
+                value = int(value)
+            except ValueError:
+                return
+        if self.min_value is not None:
+            value = max(value, self.min_value)
+        if self.max_value is not None:
+            value = min(value, self.max_value)
+        self.value = value
+        if self.on_changed_callback is not None:
+            self.on_changed_callback(value)
+
+    def on_event(self, event: tcod.event.Event) -> StateResult:
+        """Handle events for updating the current value."""
+        match event:
+            case tcod.event.KeyDown(sym=sym) if sym in DIRECTION_KEYS:
+                dx, dy = DIRECTION_KEYS[sym]
+                self.set_value(self.value + dx)
+                return None
+            case tcod.event.KeyDown(sym=sym) if sym in {KeySym.RETURN, KeySym.RETURN2, KeySym.KP_ENTER}:
+                return Push(TextFieldWindow(buffer=str(self.value), on_done_callback=self.set_value))
+            case tcod.event.MouseButtonUp(button=tcod.event.MouseButton.LEFT):
+                return Push(TextFieldWindow(buffer=str(self.value), on_done_callback=self.set_value))
+            case _:
+                return None
 
 
 @attrs.define(eq=False)
@@ -105,7 +173,7 @@ class ListMenu(State):
     x: int = 0
     y: int = 0
 
-    def on_event(self, event: tcod.event.Event) -> StateResult:  # noqa: PLR0911
+    def on_event(self, event: tcod.event.Event) -> StateResult:
         """Handle events for menus."""
         match event:
             case tcod.event.Quit():
@@ -113,7 +181,7 @@ class ListMenu(State):
             case tcod.event.KeyDown(sym=sym) if sym in DIRECTION_KEYS:
                 dx, dy = DIRECTION_KEYS[sym]
                 if dx != 0 or dy == 0:
-                    return None
+                    return self.activate_selected(event)
                 if self.selected is not None:
                     self.selected += dy
                     self.selected %= len(self.items)
@@ -124,21 +192,17 @@ class ListMenu(State):
                 y -= self.y
                 self.selected = y if 0 <= y < len(self.items) else None
                 return None
-            case tcod.event.KeyDown(sym=KeySym.RETURN):
-                return self.activate_selected()
-            case tcod.event.MouseButtonUp(button=tcod.event.MouseButton.LEFT):
-                return self.activate_selected()
             case tcod.event.KeyDown(sym=KeySym.ESCAPE):
                 return self.on_cancel()
             case tcod.event.MouseButtonUp(button=tcod.event.MouseButton.RIGHT):
                 return self.on_cancel()
             case _:
-                return None
+                return self.activate_selected(event)
 
-    def activate_selected(self) -> StateResult:
+    def activate_selected(self, event: tcod.event.Event) -> StateResult:
         """Call the selected menu items callback."""
         if self.selected is not None:
-            return self.items[self.selected].callback()
+            return self.items[self.selected].on_event(event)
         return None
 
     def on_cancel(self) -> StateResult:
@@ -164,6 +228,54 @@ class ListMenu(State):
             )
 
 
+@attrs.define(eq=False)
+class TextFieldWindow(State):
+    """Modal user-editable text field window."""
+
+    buffer: str
+    on_done_callback: Callable[[str], None]
+
+    x: int = 5
+    y: int = 5
+    width: int = 24
+
+    def on_done(self) -> StateResult:
+        """Called when the editing is finished."""
+        self.on_done_callback(self.buffer)
+        return Pop()
+
+    def on_event(self, event: tcod.event.Event) -> StateResult:
+        """Handle events for text editing."""
+        match event:
+            case tcod.event.Quit():
+                raise SystemExit()
+            case tcod.event.KeyDown(sym=sym) if sym in {KeySym.RETURN, KeySym.RETURN2, KeySym.KP_ENTER}:
+                return self.on_done()
+            case tcod.event.KeyDown(sym=KeySym.ESCAPE):
+                return self.on_done()
+            case tcod.event.KeyDown(sym=KeySym.BACKSPACE):
+                self.buffer = self.buffer[:-1]
+                return None
+            case tcod.event.TextInput(text=text):
+                self.buffer += text
+                return None
+            case _:
+                return None
+
+    def on_draw(self, console: tcod.console.Console) -> None:
+        """Draw the text buffer."""
+        draw_previous_state(console, self)
+
+        console.draw_frame(self.x, self.y, self.width + 2, 3)
+        console.print(
+            self.x + 1,
+            self.y + 1,
+            self.buffer + "_",
+            fg=(255, 255, 255),
+            bg=(0, 0, 0),
+        )
+
+
 class MainMenu(ListMenu):
     """Main/escape menu."""
 
@@ -172,11 +284,20 @@ class MainMenu(ListMenu):
     def __init__(self) -> None:
         """Initialize the main menu."""
         items = [
-            MenuItem("New game", self.new_game),
-            MenuItem("Quit", self.quit),
+            SelectItem("New game", self.new_game),
+            SelectItem("Quit", self.quit),
+            IntItem(
+                "Console width: {}",
+                g.config.console.columns,
+                min_value=10,
+                on_changed_callback=self.set_console_columns,
+            ),
+            IntItem(
+                "Console height: {}", g.config.console.rows, min_value=10, on_changed_callback=self.set_console_rows
+            ),
         ]
         if hasattr(g, "world"):
-            items.insert(0, MenuItem("Continue", self.continue_))
+            items.insert(0, SelectItem("Continue", self.continue_))
 
         super().__init__(
             items=tuple(items),
@@ -185,16 +306,29 @@ class MainMenu(ListMenu):
             y=5,
         )
 
-    def continue_(self) -> StateResult:
+    @staticmethod
+    def set_console_columns(v: int) -> None:
+        """Adjust the console size."""
+        g.config.console.columns = v
+
+    @staticmethod
+    def set_console_rows(v: int) -> None:
+        """Adjust the console size."""
+        g.config.console.rows = v
+
+    @staticmethod
+    def continue_() -> StateResult:
         """Return to the game."""
         return Reset(InGame())
 
-    def new_game(self) -> StateResult:
+    @staticmethod
+    def new_game() -> StateResult:
         """Begin a new game."""
         g.world = game.world_tools.new_world()
         return Reset(InGame())
 
-    def quit(self) -> StateResult:
+    @staticmethod
+    def quit() -> StateResult:
         """Close the program."""
         raise SystemExit()
 
@@ -259,12 +393,7 @@ class LogViewer(State):
 
     def on_draw(self, console: tcod.console.Console) -> None:
         """Render the menu."""
-        current_index = g.states.index(self)
-        if current_index > 0:
-            g.states[current_index - 1].on_draw(console)
-        if g.states[-1] is self:
-            console.rgb["fg"] //= 4
-            console.rgb["bg"] //= 4
+        draw_previous_state(console, self)
 
         console.draw_frame(
             self.x, self.y, self.width, self.height, fg=(255, 255, 255), bg=(0, 0, 0), decoration="┌─┐│ │└─┘"
