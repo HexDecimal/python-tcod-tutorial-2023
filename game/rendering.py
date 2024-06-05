@@ -8,7 +8,9 @@ import attrs
 import tcod.console
 import tcod.ecs
 
+import g
 from game.message_tools import get_log
+from game.state import State
 
 
 @attrs.define()
@@ -48,3 +50,13 @@ class LogRenderer:
                 break
             y += console.print_box(x=0, y=y, width=self.width, height=0, string=msg.text, fg=(255, 255, 255))
         return console
+
+
+def draw_previous_state(console: tcod.console.Console, state: State) -> None:
+    """Draw the state before this state."""
+    current_index = g.states.index(state)
+    if current_index > 0:
+        g.states[current_index - 1].on_draw(console)
+    if g.states[-1] is state:  # Darken the screen before drawing the last state.
+        console.rgb["fg"] //= 4
+        console.rgb["bg"] //= 4
