@@ -5,7 +5,6 @@ from __future__ import annotations
 import tcod.context
 import tcod.ecs
 
-import game.config
 import game.state
 
 context: tcod.context.Context
@@ -16,6 +15,3 @@ world: tcod.ecs.Registry
 
 states: list[game.state.State] = []
 """A stack of states with the last item being the active state."""
-
-config: game.config.Config
-"""Configuration settings."""

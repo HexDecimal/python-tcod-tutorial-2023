@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Final, Protocol, Self
+from typing import Final, Protocol
 
 import attrs
 import tcod.console
@@ -14,8 +14,6 @@ from tcod.event import KeySym
 import g
 import game.world_tools
 from game.components import Gold, Graphic, Position
-from game.message_tools import report
-from game.rendering import LogRenderer, draw_previous_state
 from game.state import Pop, Push, Reset, State, StateResult
 from game.tags import IsItem, IsPlayer
 
@@ -66,13 +64,12 @@ class InGame(State):
                 # Auto pickup gold
                 for gold in g.world.Q.all_of(components=[Gold], tags=[player.components[Position], IsItem]):
                     player.components[Gold] += gold.components[Gold]
-                    report(g.world, f"Picked up {gold.components[Gold]}g, total: {player.components[Gold]}g")
+                    text = f"Picked up {gold.components[Gold]}g, total: {player.components[Gold]}g"
+                    g.world[None].components[("Text", str)] = text
                     gold.clear()
                 return None
             case tcod.event.KeyDown(sym=KeySym.ESCAPE):
                 return Push(MainMenu())
-            case tcod.event.KeyDown(sym=KeySym.m):
-                return Push(LogViewer.from_console_size(*g.config.console.size))
             case _:
                 return None
 
@@ -85,7 +82,8 @@ class InGame(State):
             graphic = entity.components[Graphic]
             console.rgb[["ch", "fg"]][pos.y, pos.x] = graphic.ch, graphic.fg
 
-        LogRenderer.init(g.world, console.width, 5).render().blit(dest=console, dest_x=0, dest_y=console.height - 5)
+        if text := g.world[None].components.get(("Text", str)):
+            console.print(x=0, y=console.height - 1, string=text, fg=(255, 255, 255), bg=(0, 0, 0))
 
 
 class MenuItem(Protocol):
@@ -115,51 +113,6 @@ class SelectItem(MenuItem):
                 return self.callback()
             case tcod.event.MouseButtonUp(button=tcod.event.MouseButton.LEFT):
                 return self.callback()
-            case _:
-                return None
-
-
-@attrs.define()
-class IntItem(MenuItem):
-    """Numbered item."""
-
-    format: str = "{}"
-    value: int = 0
-    min_value: int | None = 0
-    max_value: int | None = None
-    on_changed_callback: Callable[[int], None] | None = None
-
-    @property
-    def label(self) -> str:
-        """Return a label including the current value."""
-        return self.format.format(self.value)
-
-    def set_value(self, value: int | str) -> None:
-        """Set and clamp the value."""
-        if isinstance(value, str):
-            try:
-                value = int(value)
-            except ValueError:
-                return
-        if self.min_value is not None:
-            value = max(value, self.min_value)
-        if self.max_value is not None:
-            value = min(value, self.max_value)
-        self.value = value
-        if self.on_changed_callback is not None:
-            self.on_changed_callback(value)
-
-    def on_event(self, event: tcod.event.Event) -> StateResult:
-        """Handle events for updating the current value."""
-        match event:
-            case tcod.event.KeyDown(sym=sym) if sym in DIRECTION_KEYS:
-                dx, dy = DIRECTION_KEYS[sym]
-                self.set_value(self.value + dx)
-                return None
-            case tcod.event.KeyDown(sym=sym) if sym in {KeySym.RETURN, KeySym.RETURN2, KeySym.KP_ENTER}:
-                return Push(TextFieldWindow(buffer=str(self.value), on_done_callback=self.set_value))
-            case tcod.event.MouseButtonUp(button=tcod.event.MouseButton.LEFT):
-                return Push(TextFieldWindow(buffer=str(self.value), on_done_callback=self.set_value))
             case _:
                 return None
 
@@ -228,54 +181,6 @@ class ListMenu(State):
             )
 
 
-@attrs.define(eq=False)
-class TextFieldWindow(State):
-    """Modal user-editable text field window."""
-
-    buffer: str
-    on_done_callback: Callable[[str], None]
-
-    x: int = 5
-    y: int = 5
-    width: int = 24
-
-    def on_done(self) -> StateResult:
-        """Called when the editing is finished."""
-        self.on_done_callback(self.buffer)
-        return Pop()
-
-    def on_event(self, event: tcod.event.Event) -> StateResult:
-        """Handle events for text editing."""
-        match event:
-            case tcod.event.Quit():
-                raise SystemExit()
-            case tcod.event.KeyDown(sym=sym) if sym in {KeySym.RETURN, KeySym.RETURN2, KeySym.KP_ENTER}:
-                return self.on_done()
-            case tcod.event.KeyDown(sym=KeySym.ESCAPE):
-                return self.on_done()
-            case tcod.event.KeyDown(sym=KeySym.BACKSPACE):
-                self.buffer = self.buffer[:-1]
-                return None
-            case tcod.event.TextInput(text=text):
-                self.buffer += text
-                return None
-            case _:
-                return None
-
-    def on_draw(self, console: tcod.console.Console) -> None:
-        """Draw the text buffer."""
-        draw_previous_state(console, self)
-
-        console.draw_frame(self.x, self.y, self.width + 2, 3)
-        console.print(
-            self.x + 1,
-            self.y + 1,
-            self.buffer + "_",
-            fg=(255, 255, 255),
-            bg=(0, 0, 0),
-        )
-
-
 class MainMenu(ListMenu):
     """Main/escape menu."""
 
@@ -286,15 +191,6 @@ class MainMenu(ListMenu):
         items = [
             SelectItem("New game", self.new_game),
             SelectItem("Quit", self.quit),
-            IntItem(
-                "Console width: {}",
-                g.config.console.columns,
-                min_value=10,
-                on_changed_callback=self.set_console_columns,
-            ),
-            IntItem(
-                "Console height: {}", g.config.console.rows, min_value=10, on_changed_callback=self.set_console_rows
-            ),
         ]
         if hasattr(g, "world"):
             items.insert(0, SelectItem("Continue", self.continue_))
@@ -305,16 +201,6 @@ class MainMenu(ListMenu):
             x=5,
             y=5,
         )
-
-    @staticmethod
-    def set_console_columns(v: int) -> None:
-        """Adjust the console size."""
-        g.config.console.columns = v
-
-    @staticmethod
-    def set_console_rows(v: int) -> None:
-        """Adjust the console size."""
-        g.config.console.rows = v
 
     @staticmethod
     def continue_() -> StateResult:
@@ -331,81 +217,3 @@ class MainMenu(ListMenu):
     def quit() -> StateResult:
         """Close the program."""
         raise SystemExit()
-
-
-@attrs.define(eq=False)
-class LogViewer(State):
-    """Displays the full log of messages."""
-
-    x: int
-    y: int
-    width: int
-    height: int
-    log_renderer: LogRenderer
-
-    @classmethod
-    def from_console_size(cls, width: int, height: int) -> Self:
-        """Return a new instance derived from the provided console size."""
-        MARGIN_SIZE = 2
-        return cls(
-            x=MARGIN_SIZE,
-            y=MARGIN_SIZE,
-            width=width - MARGIN_SIZE * 2,
-            height=height - MARGIN_SIZE * 2,
-            log_renderer=LogRenderer.init(g.world, width - MARGIN_SIZE * 2 - 2, height - MARGIN_SIZE * 2 - 2),
-        )
-
-    def on_event(self, event: tcod.event.Event) -> StateResult:  # noqa: PLR0911
-        """Handle events for menus."""
-        match event:
-            case tcod.event.Quit():
-                raise SystemExit()
-            case tcod.event.MouseWheel(y=y):
-                self.log_renderer.scroll(-y * 3)
-                return None
-            case tcod.event.MouseMotion(motion=(_, y), state=tcod.event.MouseButtonMask.LEFT):
-                self.log_renderer.scroll(-y)
-                return None
-            case tcod.event.KeyDown(sym=KeySym.HOME):
-                self.log_renderer.y_position = 0
-                return None
-            case tcod.event.KeyDown(sym=KeySym.END):
-                self.log_renderer.y_position = self.log_renderer.get_max_y_pos()
-                return None
-            case tcod.event.KeyDown(sym=KeySym.PAGEUP):
-                self.log_renderer.scroll(-self.log_renderer.height)
-                return None
-            case tcod.event.KeyDown(sym=KeySym.PAGEDOWN):
-                self.log_renderer.scroll(self.log_renderer.height)
-                return None
-            case tcod.event.KeyDown(sym=sym) if sym in DIRECTION_KEYS:
-                dx, dy = DIRECTION_KEYS[sym]
-                if dx != 0 or dy == 0:
-                    return Pop()
-                self.log_renderer.scroll(dy)
-                return None
-            case tcod.event.KeyDown():
-                return Pop()
-            case tcod.event.MouseButtonUp(button=tcod.event.MouseButton.RIGHT):
-                return Pop()
-            case _:
-                return None
-
-    def on_draw(self, console: tcod.console.Console) -> None:
-        """Render the menu."""
-        draw_previous_state(console, self)
-
-        console.draw_frame(
-            self.x, self.y, self.width, self.height, fg=(255, 255, 255), bg=(0, 0, 0), decoration="┌─┐│ │└─┘"
-        )
-        console.print_box(
-            self.x,
-            self.y,
-            self.width,
-            self.height,
-            " Message Log ",
-            fg=(0, 0, 0),
-            bg=(255, 255, 255),
-            alignment=tcod.constants.CENTER,
-        )
-        self.log_renderer.render().blit(dest=console, dest_x=self.x + 1, dest_y=self.y + 1)

@@ -12,7 +12,7 @@ def main_draw() -> None:
     """Render and present the active state."""
     if not g.states:
         return
-    console = tcod.console.Console(*g.config.console.size)
+    console = g.context.new_console(min_columns=80, min_rows=50)
     g.states[-1].on_draw(console)
     g.context.present(console)
 
