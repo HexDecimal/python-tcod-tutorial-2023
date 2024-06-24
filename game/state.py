@@ -41,3 +41,4 @@ class Reset:
 
 
 StateResult: TypeAlias = "Push | Pop | Reset | None"
+"""Union of state results."""
