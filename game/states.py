@@ -92,12 +92,11 @@ class MenuItem(Protocol):
 
     __slots__ = ()
 
-    @property
-    def label(self) -> str:
-        """Label for the menu item."""
-
     def on_event(self, event: tcod.event.Event) -> StateResult:
         """Handle events passed to the menu item."""
+
+    def on_draw(self, console: tcod.console.Console, x: int, y: int, highlight: bool) -> None:
+        """Draw is item at the given position."""
 
 
 @attrs.define()
@@ -116,6 +115,10 @@ class SelectItem(MenuItem):
                 return self.callback()
             case _:
                 return None
+
+    def on_draw(self, console: tcod.console.Console, x: int, y: int, highlight: bool) -> None:
+        """Render this items label."""
+        console.print(x, y, self.label, fg=(255, 255, 255), bg=(64, 64, 64) if highlight else (0, 0, 0))
 
 
 @attrs.define(eq=False)
@@ -167,14 +170,7 @@ class ListMenu(State):
         """Render the menu."""
         game.state_tools.draw_previous_state(self, console)
         for i, item in enumerate(self.items):
-            is_selected = i == self.selected
-            console.print(
-                self.x,
-                self.y + i,
-                item.label,
-                fg=(255, 255, 255),
-                bg=(64, 64, 64) if is_selected else (0, 0, 0),
-            )
+            item.on_draw(console, x=self.x, y=self.y + i, highlight=i == self.selected)
 
 
 class MainMenu(ListMenu):
