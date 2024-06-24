@@ -12,6 +12,7 @@ import tcod.event
 from tcod.event import KeySym
 
 import g
+import game.state_tools
 import game.world_tools
 from game.components import Gold, Graphic, Position
 from game.state import Pop, Push, Reset, State, StateResult
@@ -164,12 +165,7 @@ class ListMenu(State):
 
     def on_draw(self, console: tcod.console.Console) -> None:
         """Render the menu."""
-        current_index = g.states.index(self)
-        if current_index > 0:
-            g.states[current_index - 1].on_draw(console)
-        if g.states[-1] is self:
-            console.rgb["fg"] //= 4
-            console.rgb["bg"] //= 4
+        game.state_tools.draw_previous_state(self, console)
         for i, item in enumerate(self.items):
             is_selected = i == self.selected
             console.print(
