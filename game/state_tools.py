@@ -12,9 +12,9 @@ def main_draw() -> None:
     """Render and present the active state."""
     if not g.states:
         return
-    console = g.context.new_console(min_columns=80, min_rows=50)
-    g.states[-1].on_draw(console)
-    g.context.present(console)
+    g.console.clear()
+    g.states[-1].on_draw(g.console)
+    g.context.present(g.console)
 
 
 def apply_state_result(result: StateResult) -> None:

@@ -21,7 +21,8 @@ def main() -> None:
     )
     tcod.tileset.procedural_block_elements(tileset=tileset)
     g.states = [game.states.MainMenu()]
-    with tcod.context.new(columns=80, rows=50, tileset=tileset) as g.context:
+    g.console = tcod.console.Console(80, 50)
+    with tcod.context.new(console=g.console, tileset=tileset) as g.context:
         game.state_tools.main_loop()
 
 
