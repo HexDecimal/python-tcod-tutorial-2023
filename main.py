@@ -11,8 +11,6 @@ import g
 import game.state_tools
 import game.states
 
-CONFIG_FILE = "config.ini"
-
 
 def main() -> None:
     """Entry point function."""
