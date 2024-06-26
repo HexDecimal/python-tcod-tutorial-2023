@@ -17,7 +17,7 @@ from game.state import Push, Reset, State, StateResult
 from game.tags import IsItem, IsPlayer
 
 
-@attrs.define(eq=False)
+@attrs.define()
 class InGame(State):
     """Primary in-game state."""
 
