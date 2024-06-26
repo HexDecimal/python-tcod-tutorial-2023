@@ -10,7 +10,7 @@ import tcod.event
 import tcod.tileset
 
 
-@attrs.define(eq=False)
+@attrs.define()
 class ExampleState:
     """Example state with a hard-coded player position."""
 
