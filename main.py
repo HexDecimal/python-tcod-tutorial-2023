@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Main entry-point module. This script is used to start the program."""
+
 from __future__ import annotations
 
 import tcod.console
