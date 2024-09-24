@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import tcod.console
+import tcod.event
 
 import g
 from game.state import Pop, Push, Reset, State, StateResult
@@ -50,7 +51,7 @@ def get_previous_state(state: State) -> State | None:
     return g.states[current_index - 1] if current_index > 0 else None
 
 
-def draw_previous_state(state: State, console: tcod.console.Console, dim: bool = True) -> None:
+def draw_previous_state(state: State, console: tcod.console.Console, *, dim: bool = True) -> None:
     """Draw previous states, optionally dimming all but the active state."""
     prev_state = get_previous_state(state)
     if prev_state is None:

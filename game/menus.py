@@ -23,7 +23,7 @@ class MenuItem(Protocol):
     def on_event(self, event: tcod.event.Event) -> StateResult:
         """Handle events passed to the menu item."""
 
-    def on_draw(self, console: tcod.console.Console, x: int, y: int, highlight: bool) -> None:
+    def on_draw(self, console: tcod.console.Console, x: int, y: int, *, highlight: bool) -> None:
         """Draw is item at the given position."""
 
 
@@ -44,7 +44,7 @@ class SelectItem(MenuItem):
             case _:
                 return None
 
-    def on_draw(self, console: tcod.console.Console, x: int, y: int, highlight: bool) -> None:
+    def on_draw(self, console: tcod.console.Console, x: int, y: int, *, highlight: bool) -> None:
         """Render this items label."""
         console.print(x, y, self.label, fg=(255, 255, 255), bg=(64, 64, 64) if highlight else (0, 0, 0))
 
@@ -62,7 +62,7 @@ class ListMenu(State):
         """Handle events for menus."""
         match event:
             case tcod.event.Quit():
-                raise SystemExit()
+                raise SystemExit
             case tcod.event.KeyDown(sym=sym) if sym in DIRECTION_KEYS:
                 dx, dy = DIRECTION_KEYS[sym]
                 if dx != 0 or dy == 0:

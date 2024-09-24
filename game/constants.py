@@ -1,5 +1,7 @@
 """Global constants are stored here."""
 
+from __future__ import annotations
+
 from typing import Final
 
 from tcod.event import KeySym

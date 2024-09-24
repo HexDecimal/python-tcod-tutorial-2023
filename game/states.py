@@ -26,7 +26,7 @@ class InGame(State):
         (player,) = g.world.Q.all_of(tags=[IsPlayer])
         match event:
             case tcod.event.Quit():
-                raise SystemExit()
+                raise SystemExit
             case tcod.event.KeyDown(sym=sym) if sym in DIRECTION_KEYS:
                 player.components[Position] += DIRECTION_KEYS[sym]
                 # Auto pickup gold
@@ -89,4 +89,4 @@ class MainMenu(game.menus.ListMenu):
     @staticmethod
     def quit() -> StateResult:
         """Close the program."""
-        raise SystemExit()
+        raise SystemExit
